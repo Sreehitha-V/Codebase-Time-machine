@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  avatar    String?
+  githubId  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repos Repo[]
+}
+
+model Repo {
+  id          String   @id @default(cuid())
+  name        String
+  fullName    String
+  description String?
+  url         String
+  owner       String
+  isPrivate   Boolean  @default(false)
+  stars       Int      @default(0)
+  language    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  analyzedAt  DateTime?
+
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commits Commit[]
+
+  @@unique([userId, fullName])
+}
+
+model Commit {
+  id           String   @id @default(cuid())
+  sha          String
+  message      String
+  authorName   String
+  authorEmail  String
+  authorAvatar String?
+  committedAt  DateTime
+  additions    Int      @default(0)
+  deletions    Int      @default(0)
+  filesChanged Int      @default(0)
+  url          String?
+  createdAt    DateTime @default(now())
+
+  repoId      String
+  repo        Repo           @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  fileChanges FileChange[]
+  explanation AIExplanation?
+
+  @@unique([repoId, sha])
+}
+
+model FileChange {
+  id        String @id @default(cuid())
+  filename  String
+  status    String // added, modified, removed, renamed
+  additions Int    @default(0)
+  deletions Int    @default(0)
+  patch     String? @db.Text
+
+  commitId String
+  commit   Commit @relation(fields: [commitId], references: [id], onDelete: Cascade)
+}
+
+model AIExplanation {
+  id                  String   @id @default(cuid())
+  simpleExplanation   String   @db.Text
+  technicalExplanation String  @db.Text
+  whyItChanged        String   @db.Text
+  impact              String   @db.Text
+  createdAt           DateTime @default(now())
+
+  commitId String @unique
+  commit   Commit @relation(fields: [commitId], references: [id], onDelete: Cascade)
+}
